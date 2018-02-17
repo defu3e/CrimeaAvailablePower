@@ -20,8 +20,6 @@
 
 <hr />
   
- 
-  
 <!-- external scipts -->
 <script type="text/javascript" src="https://api-maps.yandex.ru/2.1/?load=package.map&lang=ru_RU" ></script> 
 <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script> 
@@ -53,8 +51,6 @@
             "1754564", // [8] Симферополь
             "1754563", // [9] Судак
             "1754565" // [10] Феодосия
-            //1590251, // Черноморский район
-            //1754560, // Раздольненский район
           ];
   /***************************************************************************************************************************************/
   
@@ -162,8 +158,6 @@
       collection.setStyles(function (object, yobject) {
         var level = object.properties.level;
           return ({
-            //zIndex: level,
-            //zIndexHover: level,
             strokeWidth: Math.max(1, level == 3 ? 5 : 2),
             strokeColor: '#0C68F3', 
             fillColor: '#FFE1',
@@ -323,5 +317,6 @@
   } // end init()
 
 </script>
-  </body>
-  </html>
+
+ </body>
+ </html>
