@@ -1,0 +1,313 @@
+<div>
+	Выберите район, чтобы получить информацию о доступной мощности. 
+</div>
+
+<br />
+
+<div id="map" style="width: 100%; height: 520px"></div>
+
+<hr />
+
+<div>
+	Информация актуализирована <strong>18.12.2017</strong>
+	<br>
+	
+	Доступные мощности в виде таблицы доступны по  <a target="_blank" href="assets/images/dostupnye_moshhnosti.jpg">ссылке</a>
+
+</div>
+
+
+
+<script type="text/javascript" src="https://api-maps.yandex.ru/2.1/?load=package.map&lang=ru_RU" ></script> 
+<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?v=3.exp"></script> 
+<script type="text/javascript" src="http://kashey.ru/maps/regions.js?4"></script>
+
+<script type="text/javascript">
+
+	ymaps.ready(init);		// инициализация яндекс карты 
+	
+	/****************************************** Определение глобальных структур и переменных ********************************************/
+	/************************************************************************************************************************************/
+
+	var jsonData = 'assets/availablePower.json'; // ссылка на файл с json данными
+	
+	var saki_id = 1754561;						// id Сакского района
+	
+	var myMap;									// ссылка на объект яндекс карты
+	
+	var osmid_array = [ //********* Массив id районов Крыма ***********
+						"1754551", // [0] Алуштинский район
+						"1574582", // [1] Бахчисарайский район
+						"1754552", // [2] Белагорский район
+						"1754553", // [3] Джанкойский район
+						"1581042", // [4] Евпатория
+						"1754557", // [5] Ленинский район (Керчь)
+						"1754555", // [6] Красноперекопский район
+						"1754561", // [7] Сакский район
+						"1754564", // [8] Симферополь
+						"1754563", // [9] Судак
+						"1754565" // [10] Феодосия
+						//1590251, // Черноморский район
+						//1754560, // Раздольненский район
+					];
+	/***************************************************************************************************************************************/
+	
+	function init () 
+	{
+	/*********************************************** Подключение и конфигурация yandex карты ***********************************************/
+	/***************************************************************************************************************************************/
+    	myMap = new ymaps.Map ("map", 
+			{
+				controls: 	[						// добавление элементов управления 
+								'typeSelector', 	// выбор схемы карты
+								'searchControl', 	// поле поиска по адресу
+								'zoomControl', 		// кнопки масштабирования карты
+								'fullscreenControl'	// кнопка управления размером карты
+							], 
+							
+				type: 		'yandex#hybrid',		// тип схемы по умолчанию 
+				center: 	[45.2, 34.5],			// установка центра карты
+				zoom: 		8,						// установка масштаба карты
+			},
+			
+			{
+				searchControlSize: 'small',			// установка размера кнопки поиска
+				zoomControlSize: 'small',			// установка размера кнопок масштабирования
+				maxZoom: 20, 						// установка максимального масштабирования карты
+				minZoom: 8							// установка минимального масштабирвоания карты
+			}
+		); // end ymap()
+			
+		myMap.behaviors.disable('scrollZoom'); 		// отключение скролла (масштабирование колесом мыши)
+				
+	/***************************************************************************************************************************************/
+
+		var geoMap 		= myMap,	// копия ссылки на объект яндекс.карты
+			collection 	= 0,		// коллекция для esosedi regions (osme)
+			lastRegion	= 0;		// коллекция последнего выделенного региона
+			
+	/***************************************************************************************************************************************/
+	
+	/************************************* Создание коллекции Крыма (без Сакского района) **************************************************/
+	/***************************************************************************************************************************************/
+		osmeRegions.geoJSON (
+								'RU-CR', 		// osm id Крыма
+								{
+									lang: 'ru', // язык надписей 
+									quality: 0, // качество отображения
+									scheme: {									// отображение только тех районов
+										72639:function (region){				// которые являются дочерними
+											return region.hasParent('RU-CR');	// для Крыма
+										}
+									}
+								}, 
+								function (data) {
+									var collection = osmeRegions.toYandex(data, ymaps);	// добавление коллекции 
+									collection.add(geoMap);								// на карту
+									
+									setMouseClickEvent (collection);					// добавление события нажатия ЛКМ
+									setMouseMovEvent (collection);						// добавление события перемещения курсора
+									setCollectionStyle (collection, data);				// установка стился коллекции
+								});
+
+	/*********************************************** Создание коллекции Сакского района ****************************************************/
+	/***************************************************************************************************************************************/		
+		osmeRegions.geoJSON(saki_id, 
+								{
+									lang: 'ru', 
+									quality:0,
+								}, 
+								 function (data, pure) {
+										var collection = osmeRegions.toYandex(data, ymaps);
+										collection.add(geoMap);
+		 
+										setMouseClickEvent (collection);	
+										
+										/******************* Добавление событий нперемещения курсора *******************/
+										collection.addEvent('mouseenter', function (object, type, target, event) {					
+											 collection.setStyles(function (object, yobject) {
+												var level = object.properties.level;
+												return ({
+													zIndex: level,
+													zIndexHover: level,		
+													strokeWidth: Math.max(1, level == 3 ? 5 : 2),
+													strokeColor: '#0C68F3', 
+													strokeStyle: 'solid',
+													fillColor: '#FFF7', 
+												});
+											});							
+										 });
+										 								   
+										collection.addEvent('mouseleave', function (object, type, target, event) {
+											 setCollectionStyle (collection, data);
+												
+										 }); 
+										 /*******************************************************************************/
+										 
+										setCollectionStyle (collection, data);
+								}
+		);
+		
+		function setCollectionStyle(collection, data)
+		{
+			var meta = data.metaData,
+			maxLevel = meta.levels[1] + 1;
+			
+			collection.setStyles(function (object, yobject) {
+				var level = object.properties.level;
+					return ({
+						//zIndex: level,
+						//zIndexHover: level,
+						strokeWidth: Math.max(1, level == 3 ? 5 : 2),
+						strokeColor: '#0C68F3', 
+						fillColor: '#FFE1',
+					});
+			});
+		}
+		
+		/*********************************************** Изменение стиля для региона oid на ****************************************************/
+		/***************************************************************************************************************************************/
+		function loadRegion (oid, targetOid) {
+			oid = oid || targetOid;
+			lastRegion = oid;
+
+			osmeRegions.geoJSON 
+			(
+				oid, {lang: 'ru', quality: 0}, 
+				function (data, pure) {
+					if (collection) 
+						var lastCollection = collection;
+				
+					collection = osmeRegions.toYandex(data, ymaps);
+					
+					/************************* применение стиля для района *************************/
+					collection.setStyles( 
+						function (object, yobject) {
+							var level = object.properties.level;
+					
+							return ({
+								zIndex: level,				// отображение района поверх карты		
+								zIndexHover: level,			// оверлей при наведении на район  
+								strokeWidth: level / 2,		// ширина контура
+								strokeColor: '#4445',		// цвет контура
+								fillColor: '#FFF5', 		// цвет заполнения района (с прозрачностью)
+							}); // end return
+						} // end function ()
+					); // end setStyles()
+					/******************************************************************************/
+				
+					collection.add(myMap);					// добавление коллекции на яндекс карту
+				
+					if (lastCollection) 					// удаление стиля предыдущего района
+						lastCollection.remove(myMap);				
+				}
+			); // end osmeRegions.geoJSON
+		} // end loadRegion()
+		/***************************************************************************************************************************************/
+		
+		/********************************************** Установка события перемещения курсора мыши *********************************************/
+		/***************************************************************************************************************************************/
+			
+		function setMouseMovEvent (collection) {
+			
+			var osmId_current, 	// id текущего района
+				osmId_last = 0;	// id последнего района
+			
+			collection.addEvent('mousemove', 
+								function (object, type, target, event) {
+									collection.removeEvent(event);					// удаление события
+									
+									var coords = event.get('coords');				// определение текущих коордирант				
+									var osmId = object.properties.osmId;   			// получение текущего id района
+											
+									osmId_current = osmId;							// запись текущего id района
+
+									if (osmId_current != osmId_last) {				// если было перемещение курсора между районами
+										if (osmId_last != 0) 						// и id последнего района не равен нулю
+											loadRegion (osmId_current, target.ll);	// перекрасить районы
+										osmId_last = osmId_current;					// послений район становится текущим
+									}
+									
+									collection.addEvent(event);						// добавить событие к коллекции
+								}); 
+		} // end setMouseClickEvent()
+		
+		/***************************************************************************************************************************************/
+		
+		/************************************************ Установка события нажатия кнопкой мыши ***********************************************/
+		/***************************************************************************************************************************************/
+		
+		function setMouseClickEvent (collection) {
+			collection.addEvent('click', 
+								function (object, type, target, event) {
+			  
+								  var osmId = object.properties.osmId;			// получение текущего id района
+								  var coords = event.get('coords');				// определение текущих коордирант
+									
+									$.getJSON( jsonData, function(data) {
+												  var jsonDataIndex = osmid_array.indexOf(osmId);		// получение индекса района	
+													var out = createBallonText(data, jsonDataIndex);	// формирования данных баллуна
+													myMap.balloon.open(coords, out);
+												})
+									
+									event.preventDefault();
+								}
+			);
+		}
+		/***************************************************************************************************************************************/
+			
+		/*************************************************** Формирование содержимого баллуна **************************************************/
+		/***************************************************************************************************************************************/
+		function createBallonText (data, jsonDataIndex) {
+			
+			if (jsonDataIndex < 0) 														// если района нет в базе
+			return "Услуги ГУП РК \"Вода Крыма\" в данном районе не предоставляются.";	// выдать сообщение
+			
+			/********************************** Определение размерностей массивов json данных **********************************/
+			var sourcePowerNumber = data[jsonDataIndex]["Мощность источника водоснабжения"].length;	
+			var destinationPowerNumber =  data[jsonDataIndex]["Мощность водоотведения"].length;		
+			var citiesVodaCrimeaWorkNumber = 2;
+			/******************************************************************************************************************/
+			var j = 0;	// переменная для цикла
+			/*************************************** CSS стиль для содержимого баллуна ****************************************/
+			var out = 	"<style>table {width: 100%} border-collapse: collapse; td {text-align: center; padding-left: 3px;}" + 
+						"th {padding: 8px; text-align: center; background-color: #428BEA; color: white;}" +
+						"tr:nth-child(even){background-color: #f2f2f2} #pwr {text-align:center} </style> ";
+			/*****************************************************************************************************************/
+		
+			/******************************************** Создание данных баллуна ********************************************/
+			out += "<b><big>" + data[jsonDataIndex]["Наименование филиала"] + "</big></b><p><hr />";
+			out += "<table>";
+			out += "<caption><strong>Мощность источника водоснабжения</strong></caption>";
+			out += "<tr><th width=50%>Наименование</th><th>Вид источника</th><th>Мощность (м3/сут)</th></tr>";		
+			for (j = 0; j < sourcePowerNumber; j++ ) {
+				out += "<tr><td>" + data[jsonDataIndex]["Мощность источника водоснабжения"][j]["Наименование"] + "</td>" +
+					"<td> " + data[jsonDataIndex]["Мощность источника водоснабжения"][j]["Вид источника"] + "</td>" +
+					"<td id='pwr'>" + data[jsonDataIndex]["Мощность источника водоснабжения"][j]["м3/сут"] + "</td></tr>";
+			}
+
+			out += "</table><br /><hr />";
+			out += "<table>";	
+			out += "<caption><strong>Мощность водоотведения </strong></caption>";
+			out += "<tr><th>Наименование</th><th>Мощность (м3/сут)</th></tr>";
+			for (j = 0; j < destinationPowerNumber; j++ ) {
+				out += 	"<tr><td>" + data[jsonDataIndex]["Мощность водоотведения"][j]["Наименование"] + "</td>" +
+						"<td id='pwr'>" + data[jsonDataIndex]["Мощность водоотведения"][j]["м3/сут"] + "<td>";
+			}
+
+			out += "</table><br /><hr />";
+			out +="<center><strong>Населенные пункты, в которых предоставляются услуги ГУП РК «Вода Крыма»</strong></center>";
+
+			out += "<p style=\"color:#428BEA\"><b>Водоснабжение: </b></p>" + 
+					data[jsonDataIndex]["Населенные пункты, в которых предоставляются услуги ГУП РК Вода Крыма"]["Водоснабжение"] + 
+					"<p style=\"color:#428BEA\"><b>Водоотведение: </b><p>" +
+					data[jsonDataIndex]["Населенные пункты, в которых предоставляются услуги ГУП РК Вода Крыма"]["Водоотведение"] +"<hr />"; 
+			out += "</div>"; 
+			/*****************************************************************************************************************/
+			
+			return out;
+		} // end createBallonText()
+		
+	} // end init()
+
+</script>
