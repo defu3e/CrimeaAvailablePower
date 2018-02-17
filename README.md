@@ -4,4 +4,4 @@
 
 Демо: http://defuze.cc.ua/CrimeaAvailablePower/
 
-Связь с разработчиком: [Telegram](https://t.me/defuze)
+Контакты: https://t.me/defuze
